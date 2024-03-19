@@ -80,7 +80,7 @@ double *read_data(const double *buffer, size_t N, const size_t *ind1,
   TIME(
       {
         scoria_read(&client, buffer, N, res, ind1, ind2, num_threads,
-                    intrinsics, &read_req);
+                    intrinsics, &read_req, NULL);
         scoria_wait_request(&client, &read_req);
       },
       *elapsed_ns)
@@ -138,7 +138,7 @@ void write_data(double *buffer, size_t N, const double *input,
   TIME(
       {
         scoria_write(&client, buffer, N, input, ind1, ind2, num_threads,
-                     intrinsics, &write_req);
+                     intrinsics, &write_req, NULL);
         scoria_wait_request(&client, &write_req);
       },
       *elapsed_ns)

@@ -48,8 +48,9 @@ c_status scoria_controller_handle_read(struct controller *controller,
                                        struct request_queue *queue,
                                        struct request *req) {
   if (controller->chatty)
-    printf("Controller: Received Request Object: Client: %d ID: %d Type: %d N: "
+    printf("Controller: Received Request [%s] Object: Client: %d ID: %d Type: %d N: "
            "%ld\n",
+           req->name,
            req->client, req->id, req->r_type, req->N);
 
   uint64_t mtime = 0;
@@ -213,8 +214,9 @@ c_status scoria_controller_handle_write(struct controller *controller,
                                         struct request_queue *queue,
                                         struct request *req) {
   if (controller->chatty)
-    printf("Controller: Received Request Object: Client: %d ID: %d Type: %d "
+    printf("Controller: Received Request [%s] Object: Client: %d ID: %d Type: %d "
            "Pointer: %p Input Pointer: %p N: %ld\n",
+           req->name,
            req->client, req->id, req->r_type, (void *)req->output,
            (void *)req->input, req->N);
 
@@ -383,8 +385,9 @@ c_status scoria_controller_handle_writeadd(struct controller *controller,
                                            struct request_queue *queue,
                                            struct request *req) {
   if (controller->chatty)
-    printf("Controller: Received Request Object: Client: %d ID: %d Type: %d "
+    printf("Controller: Received Request [%s] Object: Client: %d ID: %d Type: %d "
            "Pointer: %p Input Pointer: %p N: %ld\n",
+            req->name,
            req->client, req->id, req->r_type, (void *)req->output,
            (void *)req->input, req->N);
 

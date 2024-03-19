@@ -38,6 +38,7 @@ struct request {
   uint64_t nsecs;
 
   UT_hash_handle hh;
+  char name[128];
 };
 
 typedef struct request_queue {

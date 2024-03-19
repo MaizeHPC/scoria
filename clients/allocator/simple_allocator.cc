@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
   struct request req1;
   scoria_write(&client, A.data(), 1024, input.data(), NULL, NULL, 0, NONE,
-               &req1);
+               &req1, NULL);
   scoria_wait_request(&client, &req1);
 
   // Read from Buffer
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
   struct request req2;
   scoria_read(&client, A.data(), 1024, output.data(), NULL, NULL, 0, NONE,
-              &req2);
+              &req2, NULL);
   scoria_wait_request(&client, &req2);
 
   for (size_t i = 0; i < 1024; ++i)

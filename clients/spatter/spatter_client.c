@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
           pattern_scatter[k] = (size_t)rc[i].pattern_scatter[k];
 
         scoria_write(&client, res, M, input, pattern, pattern_scatter, 0, NONE,
-                     &req);
+                     &req, NULL);
         scoria_wait_request(&client, &req);
 
         shm_free(pattern_scatter);
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
           pattern_gather[k] = (size_t)rc[i].pattern_gather[k];
 
         scoria_read(&client, res, M, input, pattern, pattern_gather, 0, NONE,
-                    &req);
+                    &req, NULL);
         scoria_wait_request(&client, &req);
 
         shm_free(pattern_gather);
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
       case SCATTER: {
         printf("Scatter with Length: %d\n", N);
 
-        scoria_write(&client, res, N, input, pattern, NULL, 0, NONE, &req);
+        scoria_write(&client, res, N, input, pattern, NULL, 0, NONE, &req, NULL);
         scoria_wait_request(&client, &req);
 
         break;
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
       case GATHER: {
         printf("Gather with Length: %d\n", N);
 
-        scoria_read(&client, input, N, res, pattern, NULL, 0, NONE, &req);
+        scoria_read(&client, input, N, res, pattern, NULL, 0, NONE, &req, NULL);
         scoria_wait_request(&client, &req);
 
         break;

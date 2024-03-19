@@ -25,7 +25,7 @@ struct client client;
 // mock API to interact with memory accelerator
 double *read_data(const double *buffer, size_t N, const size_t *ind1,
                   const size_t *ind2, uint64_t *internal_ns,
-                  uint64_t *elapsed_ns, size_t num_threads, i_type intrinsics) {
+                  uint64_t *elapsed_ns, size_t num_threads, i_type intrinsics, const char* name) {
 // Only time loops, not memory allocation or flow control
 #ifndef SINGLE_ALLOC
   double *res = (double *)shm_malloc(N * sizeof(double));
@@ -40,7 +40,7 @@ double *read_data(const double *buffer, size_t N, const size_t *ind1,
   TIME(
       {
         scoria_read(&client, buffer, N, res, ind1, ind2, num_threads,
-                    intrinsics, &read_req);
+                    intrinsics, &read_req, name);
         scoria_wait_request(&client, &read_req);
       },
       *elapsed_ns)
@@ -90,7 +90,7 @@ double *read_data(const double *buffer, size_t N, const size_t *ind1,
 
 void write_data(double *buffer, size_t N, const double *input,
                 const size_t *ind1, const size_t *ind2, uint64_t *internal_ns,
-                uint64_t *elapsed_ns, size_t num_threads, i_type intrinsics) {
+                uint64_t *elapsed_ns, size_t num_threads, i_type intrinsics, const char* name) {
 #ifdef USE_CLIENT
 
   struct request write_req;
@@ -98,7 +98,7 @@ void write_data(double *buffer, size_t N, const double *input,
   TIME(
       {
         scoria_write(&client, buffer, N, input, ind1, ind2, num_threads,
-                     intrinsics, &write_req);
+                     intrinsics, &write_req, name);
         scoria_wait_request(&client, &write_req);
       },
       *elapsed_ns)
@@ -186,9 +186,9 @@ size_t irand(size_t lower, size_t upper) {
 // 0: read and write passed
 // 1: read failed
 // 2: write failed
-#define CHECK_IMPL(ind1, ind2, IDX)                                            \
+#define CHECK_IMPL(ind1, ind2, IDX, name)                                            \
   double *res = read_data(data, N, ind1, ind2, internal_time_read, time_read,  \
-                          num_threads, intrinsics);                            \
+                          num_threads, intrinsics, name);                            \
   for (size_t i = 0; i < N; ++i) {                                             \
     if (res[i] != data[IDX]) {                                                 \
       return 1;                                                                \
@@ -216,7 +216,7 @@ size_t irand(size_t lower, size_t upper) {
     alias_cnt[IDX] += 1;                                                       \
   }                                                                            \
   write_data(data, N, input, ind1, ind2, internal_time_write, time_write,      \
-             num_threads, intrinsics);                                         \
+             num_threads, intrinsics, name);                                         \
                                                                                \
   start_idx[0] = 0;                                                            \
   for (size_t i = 1; i < N; ++i) {                                             \
@@ -257,22 +257,22 @@ size_t irand(size_t lower, size_t upper) {
 
 int check_0_level(double *data, size_t N, uint64_t *internal_time_read,
                   uint64_t *time_read, uint64_t *internal_time_write,
-                  uint64_t *time_write, size_t num_threads, i_type intrinsics) {
-  CHECK_IMPL(NULL, NULL, i)
+                  uint64_t *time_write, size_t num_threads, i_type intrinsics, const char *name) {
+  CHECK_IMPL(NULL, NULL, i, name)
 }
 
 int check_1_level(double *data, size_t N, const size_t *ind,
                   uint64_t *internal_time_read, uint64_t *time_read,
                   uint64_t *internal_time_write, uint64_t *time_write,
-                  size_t num_threads, i_type intrinsics) {
-  CHECK_IMPL(ind, NULL, ind[i])
+                  size_t num_threads, i_type intrinsics, const char *name) {
+  CHECK_IMPL(ind, NULL, ind[i], name)
 }
 
 int check_2_level(double *data, size_t N, const size_t *ind1,
                   const size_t *ind2, uint64_t *internal_time_read,
                   uint64_t *time_read, uint64_t *internal_time_write,
-                  uint64_t *time_write, size_t num_threads, i_type intrinsics) {
-  CHECK_IMPL(ind1, ind2, ind2[ind1[i]])
+                  uint64_t *time_write, size_t num_threads, i_type intrinsics, const char *name) {
+  CHECK_IMPL(ind1, ind2, ind2[ind1[i]], name)
 }
 
 // shuffle in-place the given indices from indices[0] to indices[N-1]
@@ -376,7 +376,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("No indirection",
                      check_0_level(data, N, internal_time_read + 0,
                                    time_read + 0, internal_time_write + 0,
-                                   time_write + 0, num_threads, intrinsics));
+                                   time_write + 0, num_threads, intrinsics, "No indirection"));
 
   // 1 level of indirection
 
@@ -385,7 +385,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("1-lev straight",
                      check_1_level(data, N, ind1, internal_time_read + 1,
                                    time_read + 1, internal_time_write + 1,
-                                   time_write + 1, num_threads, intrinsics));
+                                   time_write + 1, num_threads, intrinsics, "1-lev straight"));
 
   // permutation (no aliases)
   reset(data, ind1, ind2, N);
@@ -393,7 +393,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("1-lev full shuffle no alias",
                      check_1_level(data, N, ind1, internal_time_read + 2,
                                    time_read + 2, internal_time_write + 2,
-                                   time_write + 2, num_threads, intrinsics));
+                                   time_write + 2, num_threads, intrinsics, "1-lev full shuffle no alias"));
 
   reset(data, ind1, ind2, N);
   clustered_shuffle(ind1, N, cluster_size);
@@ -401,7 +401,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
 
                      check_1_level(data, N, ind1, internal_time_read + 3,
                                    time_read + 3, internal_time_write + 3,
-                                   time_write + 3, num_threads, intrinsics));
+                                   time_write + 3, num_threads, intrinsics, "1-lev clustered no alias"));
 
   // with aliases
   reset(data, ind1, ind2, N);
@@ -410,7 +410,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("1-lev full shuffle with alias",
                      check_1_level(data, N, ind1, internal_time_read + 4,
                                    time_read + 4, internal_time_write + 4,
-                                   time_write + 4, num_threads, intrinsics));
+                                   time_write + 4, num_threads, intrinsics, "1-lev full shuffle with alias"));
 
   reset(data, ind1, ind2, N);
   add_clustered_aliases(ind1, N, alias_fraction, cluster_size);
@@ -418,7 +418,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("1-lev clustered with alias",
                      check_1_level(data, N, ind1, internal_time_read + 5,
                                    time_read + 5, internal_time_write + 5,
-                                   time_write + 5, num_threads, intrinsics));
+                                   time_write + 5, num_threads, intrinsics, "1-lev clustered with alias"));
 
   // 2 level of indirection
 
@@ -427,7 +427,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("2-lev straight",
                      check_2_level(data, N, ind1, ind2, internal_time_read + 6,
                                    time_read + 6, internal_time_write + 6,
-                                   time_write + 6, num_threads, intrinsics));
+                                   time_write + 6, num_threads, intrinsics, "2-lev straight"));
 
   // permutation (no aliases)
   reset(data, ind1, ind2, N);
@@ -436,7 +436,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("2-lev full shuffle no alias",
                      check_2_level(data, N, ind1, ind2, internal_time_read + 7,
                                    time_read + 7, internal_time_write + 7,
-                                   time_write + 7, num_threads, intrinsics));
+                                   time_write + 7, num_threads, intrinsics, "2-lev full shuffle no alias"));
 
   reset(data, ind1, ind2, N);
   clustered_shuffle(ind1, N, cluster_size);
@@ -444,7 +444,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("2-lev clustered no alias",
                      check_2_level(data, N, ind1, ind2, internal_time_read + 8,
                                    time_read + 8, internal_time_write + 8,
-                                   time_write + 8, num_threads, intrinsics));
+                                   time_write + 8, num_threads, intrinsics, "2-lev clustered no alias"));
 
   // with aliases
   reset(data, ind1, ind2, N);
@@ -455,7 +455,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("2-lev full shuffle with alias",
                      check_2_level(data, N, ind1, ind2, internal_time_read + 9,
                                    time_read + 9, internal_time_write + 9,
-                                   time_write + 9, num_threads, intrinsics));
+                                   time_write + 9, num_threads, intrinsics, "2-lev full shuffle with alias"));
 
   reset(data, ind1, ind2, N);
   add_clustered_aliases(ind1, N, alias_fraction, cluster_size);
@@ -465,7 +465,7 @@ bool run_test_suite(size_t N, size_t cluster_size, double alias_fraction,
   all_pass &= report("2-lev clustered with alias",
                      check_2_level(data, N, ind1, ind2, internal_time_read + 10,
                                    time_read + 10, internal_time_write + 10,
-                                   time_write + 10, num_threads, intrinsics));
+                                   time_write + 10, num_threads, intrinsics, "2-lev clustered with alias"));
 
 #ifndef SINGLE_ALLOC
   shm_free(data);
